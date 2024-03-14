@@ -1,0 +1,15 @@
+.env
+.png
+test.py
+users.json
+user_info.json
+token.jsonv
+main.py
+accepted_files
+sent_files
+.idea
+logs.tsv
+output_images
+naming.py
+postgres_config.py
+save_from_tg.py

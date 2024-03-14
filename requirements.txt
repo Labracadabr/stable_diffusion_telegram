@@ -1,0 +1,5 @@
+aiogram~=3.0.0
+environs~=9.5.0
+torch~=2.2.0+cu121
+diffusers~=0.26.3
+Pillow~=10.1.0
