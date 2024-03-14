@@ -140,7 +140,7 @@ async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     await bot.edit_message_text(f'{msg.text}\n✅', msg.chat.id, msg.message_id, reply_markup=None)
     await log(logs, user, 'button_ok')
 
-    from sd import sd_gen, save_img
+    from stable_diffusion import sd_gen, save_img
     # уведомить о запуске генерации
     language = 'ru'
     lexicon = load_lexicon(language)
