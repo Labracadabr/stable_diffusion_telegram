@@ -111,19 +111,22 @@ async def personal_command(msg: Message, state: FSMContext):
         with open(users, 'r', encoding='utf-8') as f:
             data = json.load(f)
             payload: dict = data.get(user)
+
+        # заменить ключи на норм слова
         txt_payload = ''
-        # заменить кличи на норм слова
         trans = {
             'pos_prompt': 'Промпт',
             'neg_prompt': 'Анти-промпт',
-            'steps_num': 'Число шагов',}
+            'steps_num': 'Число шагов',
+        }
         for key, val in payload.items():
-            txt_payload += f'{trans[key]}: {val}\n'
+            txt_payload += f'{trans[key]}: <code>{val}</code>\n'
 
         print('txt_payload', txt_payload)
 
         # подтверждение запуска
-        await msg.answer(lexicon['confirmation'].format(txt_payload), reply_markup=keyboards.keyboard_confirm)
+        await msg.answer(lexicon['confirmation'].format(txt_payload),
+                         reply_markup=keyboards.keyboard_confirm, parse_mode='HTML')
         await state.set_state(FSM.confirm)
 
     else:
@@ -137,7 +140,7 @@ async def personal_command(msg: Message, state: FSMContext):
 async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     user = str(callback.from_user.id)
     msg = callback.message
-    await bot.edit_message_text(f'{msg.text}\n✅', msg.chat.id, msg.message_id, reply_markup=None)
+    await bot.edit_message_text(f'{msg.text}\n✅', msg.chat.id, msg.message_id, reply_markup=None, parse_mode='HTML')
     await log(logs, user, 'button_ok')
 
     from stable_diffusion import sd_gen, save_img
@@ -156,7 +159,7 @@ async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     start = time.time()
     img = sd_gen(payload=payload)
     path = save_img(image=img, name=f'{callback.from_user.first_name}_{callback.from_user.last_name}')
-    sec = round(time.time() - start, 2)
+    sec = int(time.time() - start)
     await log(logs, user, f'generated: {path}')
 
     # отправить результат
@@ -169,7 +172,7 @@ async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
 async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     user = str(callback.from_user.id)
     msg = callback.message
-    await bot.edit_message_text(f'{msg.text}\n❌', msg.chat.id, msg.message_id, reply_markup=None)
+    await bot.edit_message_text(f'{msg.text}\n❌', msg.chat.id, msg.message_id, reply_markup=None, parse_mode='HTML')
 
     await log(logs, user, 'button_no')
     language = 'ru'
