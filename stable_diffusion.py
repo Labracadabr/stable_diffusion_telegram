@@ -39,9 +39,6 @@ def sd_gen(payload: dict) -> Image:
         return e
 
     print('generation success')
-
-    # сохранить результат
-    save_img(image=image, name=payload.get('user'))
     return image
 
 
