@@ -1,3 +1,4 @@
+import asyncio
 from aiogram import Router, Bot, F, types
 import json
 from aiogram.filters import Command, CommandStart, StateFilter, CommandObject, or_f
@@ -157,7 +158,7 @@ async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
 
     # генерация
     start = time.time()
-    img = sd_gen(payload=payload)
+    img = await sd_gen(payload=payload)
     path = save_img(image=img, name=f'{callback.from_user.first_name}_{callback.from_user.last_name}')
     sec = int(time.time() - start)
     await log(logs, user, f'generated: {path}')

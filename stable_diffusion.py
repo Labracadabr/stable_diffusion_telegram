@@ -1,3 +1,4 @@
+import asyncio
 import os
 from datetime import datetime
 import torch
@@ -20,21 +21,22 @@ print(f'{device = }')
 pipe = pipe.to(device)
 
 
-def sd_gen(payload: dict) -> Image:
+async def sd_gen(payload: dict) -> Image:
     print('generating:', payload)
 
     try:
         # random seed
         generator = torch.manual_seed(payload.get('seed')) if payload.get('seed') else None
-        image = pipe(
-            prompt=payload['pos_prompt'],
-            negative_prompt=payload['neg_prompt'],
-            generator=generator,
-            num_inference_steps=int(payload['steps_num']),
-            resize_method="aspect",
-            # width=payload.get("width"),
-            # height=payload.get("height"),
-        ).images[0]
+        image = await asyncio.to_thread(
+            lambda: pipe(
+                prompt=payload['pos_prompt'],
+                negative_prompt=payload['neg_prompt'],
+                generator=generator,
+                num_inference_steps=int(payload['steps_num']),
+                resize_method="aspect",
+                # width=payload.get("width"),
+                # height=payload.get("height"),
+            ).images[0])
     except Exception as e:
         return e
 
