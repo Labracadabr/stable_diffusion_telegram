@@ -11,6 +11,7 @@ import time
 
 # Инициализация бота
 router: Router = Router()
+queue: list[str] = []
 
 
 # команда /start
@@ -81,8 +82,14 @@ async def personal_command(msg: Message, state: FSMContext):
     user = str(msg.from_user.id)
     await log(logs, user, msg.text)
 
+    # проверить ввод
+    if msg.text.isnumeric():
+        neg_prompt = None
+    else:
+        neg_prompt = msg.text
+
     # сохранить neg_prompt
-    data = {'neg_prompt': msg.text}
+    data = {'neg_prompt': neg_prompt}
     save_input(users, user, data)
 
     # спросить число
@@ -103,53 +110,72 @@ async def personal_command(msg: Message, state: FSMContext):
 
     # проверка правильности ввода
     n = msg.text
-    if n.isnumeric() and 0 < int(n) <= 50:
-        # сохранить число
-        data = {'steps_num': msg.text}
-        save_input(users, user, data)
-
-        # прочитать данные юзера
-        with open(users, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            payload: dict = data.get(user)
-
-        # заменить ключи на норм слова
-        txt_payload = ''
-        trans = {
-            'pos_prompt': 'Промпт',
-            'neg_prompt': 'Анти-промпт',
-            'steps_num': 'Число шагов',
-        }
-        for key, val in payload.items():
-            txt_payload += f'{trans[key]}: <code>{val}</code>\n'
-
-        print('txt_payload', txt_payload)
-
-        # подтверждение запуска
-        await msg.answer(lexicon['confirmation'].format(txt_payload),
-                         reply_markup=keyboards.keyboard_confirm, parse_mode='HTML')
-        await state.set_state(FSM.confirm)
-
-    else:
+    if not (n.isnumeric() and 0 < int(n) <= 30):
         # уведомить о неверном вводе
         await msg.answer(lexicon['fail_steps_num'])
         return
 
+    # сохранить число
+    data = {'steps_num': n}
+    save_input(users, user, data)
+
+    # прочитать данные юзера
+    with open(users, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        payload: dict = data.get(user)
+
+    # заменить ключи на норм слова
+    txt_payload = ''
+    trans = {
+        'pos_prompt': 'Промпт',
+        'neg_prompt': 'Анти-промпт',
+        'steps_num': 'Число шагов',
+    }
+    for key, val in payload.items():
+        txt_payload += f'{trans[key]}: <code>{val}</code>\n'
+
+    print('txt_payload', txt_payload)
+
+    # подтверждение запуска
+    await msg.answer(lexicon['confirmation'].format(txt_payload),
+                     reply_markup=keyboards.keyboard_confirm, parse_mode='HTML')
+    await state.set_state(FSM.confirm)
+
 
 # юзер нажал кнопку подтверждения генерации ✅
 @router.callback_query(F.data == "ok", StateFilter(FSM.confirm))
-async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
+async def confirm_gen(callback: CallbackQuery, bot: Bot, state: FSMContext):
     user = str(callback.from_user.id)
     msg = callback.message
-    await bot.edit_message_text(f'{msg.text}\n✅', msg.chat.id, msg.message_id, reply_markup=None, parse_mode='HTML')
+    await bot.edit_message_text(f'{msg.html_text}\n✅', msg.chat.id, msg.message_id, reply_markup=None, parse_mode='HTML')
+    await state.clear()
     await log(logs, user, 'button_ok')
-
-    from stable_diffusion import sd_gen, save_img
-    # уведомить о запуске генерации
     language = 'ru'
     lexicon = load_lexicon(language)
+
+    # очередь
+    global queue
+    id_in_queue = user+'_'+str(time.time())
+    print(f'{id_in_queue = }')
+    queue.append(id_in_queue)  # встать в очередь
+    last_position = 0
+
+    # пока в очереди есть кто-то еще другой
+    while any(filter(lambda x: x != id_in_queue, queue)):
+        position = queue.index(id_in_queue)+1
+        # очередь кончилась
+        if position == 1:
+            break
+        else:
+            await asyncio.sleep(1)
+        # очередь изменилась - уведомить
+        if last_position != position:
+            last_position = position
+            await bot.send_message(chat_id=user, text=lexicon['queue'].format(position), disable_notification=True)
+
+    # уведомить о запуске генерации
+    from stable_diffusion import sd_gen, save_img
     await bot.send_message(chat_id=user, text=lexicon['button_ok'])
-    await state.clear()
 
     # загрузить данные
     with open(users, 'r', encoding='utf-8') as f:
@@ -165,15 +191,17 @@ async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
 
     # отправить результат
     await bot.send_document(chat_id=user, document=FSInputFile(path=path), caption=lexicon['done'].format(sec))
+    print(id_in_queue, 'done', sec, 'sec')
+    queue.remove(id_in_queue)  # покинуть очередь
     await log(logs, user, 'success')
 
 
 # юзер нажал кнопку ОТМЕНЫ генерации ❌
-@router.callback_query(F.data == "ok", StateFilter(FSM.confirm))
+@router.callback_query(F.data == "no", StateFilter(FSM.confirm))
 async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     user = str(callback.from_user.id)
     msg = callback.message
-    await bot.edit_message_text(f'{msg.text}\n❌', msg.chat.id, msg.message_id, reply_markup=None, parse_mode='HTML')
+    await bot.edit_message_text(f'{msg.html_text}\n❌', msg.chat.id, msg.message_id, reply_markup=None, parse_mode='HTML')
 
     await log(logs, user, 'button_no')
     language = 'ru'
