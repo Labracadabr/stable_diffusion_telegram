@@ -7,3 +7,5 @@
 4. Установить зависимости командой <code>pip install -r requirements.txt</code>
 5. Запускать бота через файл <code>bot.py</code> - это точка входа
 
+Пример работы
+![image](https://github.com/Labracadabr/stable_diffusion_telegram/assets/124514026/9d8fbbc4-64df-408b-acce-c29cd4549ce7)
