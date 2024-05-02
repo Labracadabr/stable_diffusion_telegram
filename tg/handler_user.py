@@ -1,4 +1,7 @@
 import asyncio
+from datetime import datetime
+from stable_diffusion import sd_gen, save_img
+
 from aiogram import Router, Bot, F, types
 import json
 from aiogram.filters import Command, CommandStart, StateFilter, CommandObject, or_f
@@ -174,20 +177,24 @@ async def confirm_gen(callback: CallbackQuery, bot: Bot, state: FSMContext):
             await bot.send_message(chat_id=user, text=lexicon['queue'].format(position), disable_notification=True)
 
     # уведомить о запуске генерации
-    from stable_diffusion import sd_gen, save_img
     await bot.send_message(chat_id=user, text=lexicon['button_ok'])
 
     # загрузить данные
     with open(users, 'r', encoding='utf-8') as f:
         data = json.load(f)
-        payload = data.get(user)
+        payload: dict = data.get(user)
 
     # генерация
     start = time.time()
     img = await sd_gen(payload=payload)
-    path = save_img(image=img, name=f'{callback.from_user.first_name}_{callback.from_user.last_name}')
     sec = int(time.time() - start)
-    await log(logs, user, f'generated: {path}')
+
+    # сохранить
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    user_name = f"{callback.from_user.first_name}_{callback.from_user.last_name}"
+    file_name = f"{user_name}_{payload.get('steps_num')}-step_{timestamp}.png"
+    path = save_img(image=img, folder='users_output', file_name=file_name)
+    await log(logs, user, f'gen: {path}')
 
     # отправить результат
     await bot.send_document(chat_id=user, document=FSInputFile(path=path), caption=lexicon['done'].format(sec))

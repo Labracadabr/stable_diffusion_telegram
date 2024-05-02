@@ -1,6 +1,5 @@
 import asyncio
 import os
-from datetime import datetime
 import torch
 from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
 from PIL import Image
@@ -13,10 +12,7 @@ pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch_dtype
 pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
 
 # device: gpu or cpu
-if torch.cuda.is_available:
-    device = "cuda:0"
-else:
-    device = "cpu"
+device = "cuda:0" if torch.cuda.is_available else "cpu"
 print(f'{device = }')
 pipe = pipe.to(device)
 
@@ -44,13 +40,13 @@ async def sd_gen(payload: dict) -> Image:
     return image
 
 
-# сохранить фото с датой
-def save_img(image, name) -> str:
-    print('saving', name)
-    output_dir = 'output_images'
-    os.makedirs(output_dir, exist_ok=True)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    image_path = os.path.join(output_dir, f"{name}_{timestamp}.png")
+# сохранить фото
+def save_img(image, folder, file_name) -> str:
+    print('saving', file_name)
+    # папка
+    os.makedirs(folder, exist_ok=True)
+
+    image_path = os.path.join(folder, file_name)
     try:
         image.save(image_path)
     except:
@@ -60,17 +56,23 @@ def save_img(image, name) -> str:
 
 
 if __name__ == '__main__':
-    test_payload = {
-        "model_id": model_id,
-        "pos_prompt": "realistic red sport car in urban surrounding",
-        "neg_prompt": "disfigured, cartoon, anime, painting, sepia, b&w",
-        # "width": 1024,
-        # "height": 800,
-        "steps_num": "5",
-        "safety_checker": "yes",
-        "seed": 1
-    }
+    x = 0
+    for i in range(50, 51):
+        print(i, 'i')
+        if i not in (50,):
+            continue
 
-    img = sd_gen(payload=test_payload)
-    save_img(img, 'sd-2-1')
-    img.show()
+        test_payload = {
+            "model_id": model_id,
+            "pos_prompt": "ultra realistic astronaut riding a horse on mars, normal bodies, normal limbs, high quality, spacious desert, moon is seen at the sky ",
+            "neg_prompt": "disfigured, cartoon, anime, painting, low resolution",
+            # "width": 1024,
+            # "height": 800,
+            "steps_num": i,
+            "safety_checker": "yes",
+            "seed": 3
+        }
+
+        img = sd_gen(payload=test_payload)
+        save_img(img, f'step_{i}')
+        img.show()
